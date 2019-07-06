@@ -12,6 +12,8 @@ This script itself just manages a directory, but if combined with git, it can be
 
 It is a shell script. Make it executable and point the shell to it.
 
+Usage information shown in application with the `--help` flag.
+
 #### License
 
 This repository is licensed under the MIT License. See the `LICENSE` file for more details.
