@@ -185,6 +185,11 @@ function cmd_add_event() {
         shift
     done
 
+    if ! [ -e "$working_path/$filename" ]; then
+        echo "Cannot create event: File does not exist"
+        exit 1
+    fi
+
     if [ -z "$event_start" ] || [ -z "$event_stop" ]; then
         echo "Cannot create event: Must have begin and end times"
         exit 1
@@ -203,7 +208,24 @@ function cmd_add_event() {
         echo "DTSTART:$(date --date="$event_start" -u '+%Y%m%dT%H%M%SZ')"
         echo "DTEND:$(date --date="$event_stop" -u '+%Y%m%dT%H%M%SZ')"
         echo "END:VEVENT"
-    }
+    } | append_to_calendar "$working_path/$filename" 
+    exit "$?"
+}
+
+function append_to_calendar() {
+    filename="$1"
+    if ! [ -e "$filename" ]; then
+        echo "Cannot append to calendar: File does not exist"
+        exit 1
+    fi
+
+    FILE_CONTENTS=$({
+        awk 'BEGIN{f=1} /END:VCALENDAR/ {f=0} f' "$filename"
+        cat
+        awk 'BEGIN{f=0} /END:VCALENDAR/ {f=1} f' "$filename"
+    })
+
+    <<< "$FILE_CONTENTS" cat > "$filename"
 }
 
 working_path="$HOME/.calendar"
