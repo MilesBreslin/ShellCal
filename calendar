@@ -6,6 +6,7 @@ function show_usage() {
     echo ""
 
     command_prefix=""
+    arg_prefix="  "
     if [ -z "$1" ]; then
         echo "commands:"
         command_prefix="  "
@@ -16,7 +17,26 @@ function show_usage() {
     fi
     if [ -z "$1" ] || [[ "$1" == "generate" ]]; then
         echo -n "$command_prefix"
-        echo "generate" "[-n|--name NAME]" "<filename>" $'\t' "Generate a new calendar"
+        echo "generate" "[cmd args]" "<filename>" $'\t' "Generate a new calendar"
+        echo -n "$command_prefix"
+        echo -n "$arg_prefix"
+        echo "-n|--name" $'\t' $'\t' $'\t' $'\t' "Specify name for calendar"
+    fi
+    if [ -z "$1" ] || [[ "$1" == "add_event" ]]; then
+        echo -n "$command_prefix"
+        echo "add_event" "[cmd args]" "<filename>" $'\t' "Generate a new calendar"
+        echo -n "$command_prefix"
+        echo -n "$arg_prefix"
+        echo "-s|--summary" $'\t' $'\t' $'\t' "Specify name for calendar"
+        echo -n "$command_prefix"
+        echo -n "$arg_prefix"
+        echo "-b|--begin" $'\t' $'\t' $'\t' $'\t' "Specify begin time for event"
+        echo -n "$command_prefix"
+        echo -n "$arg_prefix"
+        echo "-e|--end" $'\t' $'\t' $'\t' $'\t' "Specify end time for event"
+        echo -n "$command_prefix"
+        echo -n "$arg_prefix"
+        echo "-d|--description" $'\t' $'\t' $'\t' "Specify description for calendar event"
     fi
     if [ -z "$1" ] || [[ "$1" == "edit" ]]; then
         echo -n "$command_prefix"
@@ -32,9 +52,8 @@ function show_usage() {
     fi
 
     echo ""
-    globalarg_prefix="  "
     echo "global arguments:"
-    echo -n "$globalarg_prefix"
+    echo -n "$arg_prefix"
     echo "-p|--path" $'\t' $'\t' $'\t' $'\t' "Set the calendar directory to work with"
 
 }
@@ -43,6 +62,10 @@ function cmd_init() {
 
     while ! [[ "$1" == "" ]]; do
         case "$1" in
+            "-h"|"--help")
+                show_usage "init"
+                exit
+                ;;
             *)
                 echo "Unknown init parameter $1"
                 show_usage "init"
@@ -70,6 +93,10 @@ function cmd_generate() {
                 shift
                 cal_name="$1"
                 ;;
+            "-h"|"--help")
+                show_usage "generate"
+                exit
+                ;;
             *)
                 if [ -z "$filename" ]; then
                     filename="$1"
@@ -86,6 +113,7 @@ function cmd_generate() {
     if [ -z "$filename" ]; then
         echo "A file must be specified"
         show_usage "generate"
+        exit 1
     fi
 
     if [ -e "$working_path/$filename" ]; then
@@ -139,6 +167,10 @@ function cmd_add_event() {
             "-e"|"--end"|"--stop")
                 shift
                 event_stop="$(date --date="$1" --rfc-822)"
+                ;;
+            "-h"|"--help")
+                show_usage "add_event"
+                exit
                 ;;
             *)
                 if [ -z "$filename" ]; then
