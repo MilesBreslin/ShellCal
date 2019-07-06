@@ -151,6 +151,12 @@ function cmd_generate() {
         echo "Cannot generate file"
         exit "$?"
     fi
+
+    if [[ "$err" == "0" ]]; then
+        git_update "$filename" "Add calendar ${cal_name:-$filename}"
+        err="$?"
+    fi
+    exit "$err"
 }
 
 function cmd_add_event() {
@@ -199,6 +205,11 @@ function cmd_add_event() {
         exit 1
     fi
 
+    if [ -z "$event_summary" ]; then
+        echo "Cannot create event: Must have summary"
+        exit 1
+    fi
+
     {
         echo "BEGIN:VEVENT"
         echo "CREATED:$(date -u '+%Y%m%dT%H%M%SZ')"
@@ -213,7 +224,13 @@ function cmd_add_event() {
         echo "DTEND:$(date --date="$event_stop" -u '+%Y%m%dT%H%M%SZ')"
         echo "END:VEVENT"
     } | append_to_calendar "$working_path/$filename" 
-    exit "$?"
+    err="$?"
+
+    if [[ "$err" == "0" ]]; then
+        git_update "$filename" "Add event $event_summary"
+        err="$?"
+    fi
+    exit "$err"
 }
 
 function append_to_calendar() {
@@ -230,6 +247,20 @@ function append_to_calendar() {
     })
 
     <<< "$FILE_CONTENTS" cat > "$filename"
+}
+
+function git_update() {
+    if [ -w "$working_path/.git" ]; then
+        git -C "$working_path" add "$working_path/$1"
+        git -C "$working_path" commit -m "$2"
+        err="$?"
+        if [[ "$GIT_PUSH" == "1" ]]; then
+            git -C "$working_path" push
+            return "$?"
+        fi
+        return "$err"
+    fi
+    return 0
 }
 
 working_path="$HOME/.calendar"
@@ -250,7 +281,15 @@ while ! [[ "$1" == "" ]]; do
         "rm")
             shift
             cd "$working_path"
-            rm "$@"
+            if [ -w "$working_path/.git" ]; then
+                git rm "$@"
+                git commit -m "Remove file $@"
+                if [[ "$GIT_PUSH" == "1" ]]; then
+                    git push
+                fi
+            else
+                rm "$@"
+            fi
             exit "$?"
             ;;
         "edit")
