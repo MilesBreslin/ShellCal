@@ -121,6 +121,59 @@ function cmd_generate() {
     fi
 }
 
+function cmd_add_event() {
+    while ! [[ "$1" == "" ]]; do
+        case "$1" in
+            "-s"|"--summary")
+                shift
+                event_summary="$1"
+                ;;
+            "-d"|"--description")
+                shift
+                event_description="$1"
+                ;;
+            "-b"|"--begin"|"--start")
+                shift
+                event_start="$(date --date="$1" --rfc-822)"
+                ;;
+            "-e"|"--end"|"--stop")
+                shift
+                event_stop="$(date --date="$1" --rfc-822)"
+                ;;
+            *)
+                if [ -z "$filename" ]; then
+                    filename="$1"
+                else
+                    echo "Unknown add_event parameter $1"
+                    show_usage "add_event"
+                    exit 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ -z "$event_start" ] || [ -z "$event_stop" ]; then
+        echo "Cannot create event: Must have begin and end times"
+        exit 1
+    fi
+
+    {
+        echo "BEGIN:VEVENT"
+        echo "CREATED:$(date -u '+%Y%m%dT%H%M%SZ')"
+        echo "UID:ShellCal_$RANDOM"
+        if ! [ -z "$event_summary" ]; then
+            echo "SUMMARY:$event_summary"
+        fi
+        if ! [ -z "$event_description" ]; then
+            echo "DESCRIPTION:$event_description"
+        fi
+        echo "DTSTART:$(date --date="$event_start" -u '+%Y%m%dT%H%M%SZ')"
+        echo "DTEND:$(date --date="$event_stop" -u '+%Y%m%dT%H%M%SZ')"
+        echo "END:VEVENT"
+    }
+}
+
 working_path="$HOME/.calendar"
 
 while ! [[ "$1" == "" ]]; do
@@ -151,6 +204,11 @@ while ! [[ "$1" == "" ]]; do
         "generate")
             shift
             cmd_generate "$@"
+            exit "$?"
+            ;;
+        "add_event")
+            shift
+            cmd_add_event "$@"
             exit "$?"
             ;;
         "--path"|"-p")
