@@ -1,7 +1,42 @@
 #!/bin/bash
 
 function show_usage() {
-    echo "HELP"
+
+    echo "usage: calendar [global arguments] ${1:-<command>} [command arguments]"
+    echo ""
+
+    command_prefix=""
+    if [ -z "$1" ]; then
+        echo "commands:"
+        command_prefix="  "
+    fi
+    if [ -z "$1" ] || [[ "$1" == "init" ]]; then
+        echo -n "$command_prefix"
+        echo "init" $'\t' $'\t' $'\t' $'\t' $'\t' "Initialize the calendar directory"
+    fi
+    if [ -z "$1" ] || [[ "$1" == "generate" ]]; then
+        echo -n "$command_prefix"
+        echo "generate" "[-n|--name NAME]" "<filename>" $'\t' "Generate a new calendar"
+    fi
+    if [ -z "$1" ] || [[ "$1" == "edit" ]]; then
+        echo -n "$command_prefix"
+        echo "edit" "<filename>" $'\t' $'\t' $'\t' "Edit raw calendar file"
+    fi
+    if [ -z "$1" ]; then
+        echo -n "$command_prefix"
+        echo "rm" "<filename>" $'\t' $'\t' $'\t' "Remove a file"
+    fi
+    if [ -z "$1" ]; then
+        echo -n "$command_prefix"
+        echo "ls" $'\t' $'\t' $'\t' $'\t' $'\t' "View directory structure"
+    fi
+
+    echo ""
+    globalarg_prefix="  "
+    echo "global arguments:"
+    echo -n "$globalarg_prefix"
+    echo "-p|--path" $'\t' $'\t' $'\t' $'\t' "Set the calendar directory to work with"
+
 }
 
 function cmd_init() {
@@ -9,7 +44,7 @@ function cmd_init() {
     while ! [[ "$1" == "" ]]; do
         case "$1" in
             *)
-                echo "Unkown init parameter $1"
+                echo "Unknown init parameter $1"
                 show_usage "init"
                 exit 1
                 ;;
@@ -39,7 +74,7 @@ function cmd_generate() {
                 if [ -z "$filename" ]; then
                     filename="$1"
                 else
-                    echo "Unkown generate parameter $1"
+                    echo "Unknown generate parameter $1"
                     show_usage "generate"
                     exit 1
                 fi
@@ -133,3 +168,5 @@ while ! [[ "$1" == "" ]]; do
     esac
     shift
 done
+
+show_usage
