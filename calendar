@@ -50,6 +50,10 @@ function show_usage() {
         echo -n "$command_prefix"
         echo "ls" $'\t' $'\t' $'\t' $'\t' $'\t' "View directory structure"
     fi
+    if [ -z "$1" ]; then
+        echo -n "$command_prefix"
+        echo "git" $'\t' $'\t' $'\t' $'\t' $'\t' "Wrapper to the complete git cli"
+    fi
 
     echo ""
     echo "global arguments:"
@@ -263,6 +267,12 @@ while ! [[ "$1" == "" ]]; do
         "add_event")
             shift
             cmd_add_event "$@"
+            exit "$?"
+            ;;
+        "git")
+            shift
+            cd "$working_path"
+            git "$@"
             exit "$?"
             ;;
         "--path"|"-p")
