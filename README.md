@@ -1,6 +1,6 @@
 # ShellCal
 
-This is a iCal calendar manager for you shell inspired by [pass](https://www.passwordstore.org/). It aids with the generation and management of iCal formatted files within a folder heirarchy.
+This is an iCal calendar manager for you shell inspired by [pass](https://www.passwordstore.org/). It aids with the generation and management of iCal formatted files within a folder heirarchy.
 
 This initial version of the application will be written in BASH, but if it proves itself useful, I will rewrite it in RUST.
 
