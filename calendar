@@ -1,0 +1,135 @@
+#!/bin/bash
+
+function show_usage() {
+    echo "HELP"
+}
+
+function cmd_init() {
+
+    while ! [[ "$1" == "" ]]; do
+        case "$1" in
+            *)
+                echo "Unkown init parameter $1"
+                show_usage "init"
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    if [ -d "$working_path" ]; then
+        echo "Cannot init: Already initialized"
+        exit 1
+    fi
+
+    mkdir "$working_path"
+    echo "Calendar store initialized"
+    exit 0
+}
+
+function cmd_generate() {
+
+    while ! [[ "$1" == "" ]]; do
+        case "$1" in
+            "-n"|"--name")
+                shift
+                cal_name="$1"
+                ;;
+            *)
+                if [ -z "$filename" ]; then
+                    filename="$1"
+                else
+                    echo "Unkown generate parameter $1"
+                    show_usage "generate"
+                    exit 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ -z "$filename" ]; then
+        echo "A file must be specified"
+        show_usage "generate"
+    fi
+
+    if [ -e "$working_path/$filename" ]; then
+        echo "Cannot generate: Already exists"
+        exit 1
+    fi
+
+    if [ -z "${filename%\/*}" ]&& ! [ -e "$working_path/${filename%\/*}" ]; then
+        mkdir -p "$working_path/${filename%\/*}"
+        err="$?"
+        if ! [[ "$err" == "0" ]]; then
+            echo "Cannot make directory ${filename%\/*}"
+            exit "$err"
+        fi
+    fi
+
+    {
+        echo "BEGIN:VCALENDAR"
+        if ! [ -z "$cal_name" ]; then
+            echo "NAME:$cal_name"
+            echo "X-WR-CALNAME:$cal_name"
+        fi
+        echo "VERSION:2.0"
+        echo "PRODID:-//MilesBreslin//ShellCal//EN"
+
+        echo "END:VCALENDAR"
+    } > "$working_path/$filename"
+
+    err="$?"
+    if ! [[ "$err" == "0" ]]; then
+        echo "Cannot generate file"
+        exit "$?"
+    fi
+}
+
+working_path="$HOME/.calendar"
+
+while ! [[ "$1" == "" ]]; do
+    case "$1" in
+        "init")
+            shift
+            cmd_init "$@"
+            exit "$?"
+            ;;
+        "ls")
+            shift
+            cd "$working_path"
+            ls "$@"
+            exit "$?"
+            ;;
+        "rm")
+            shift
+            cd "$working_path"
+            rm "$@"
+            exit "$?"
+            ;;
+        "edit")
+            shift
+            cd "$working_path"
+            nano "$@"
+            exit "$?"
+            ;;
+        "generate")
+            shift
+            cmd_generate "$@"
+            exit "$?"
+            ;;
+        "--path"|"-p")
+            shift
+            working_path="$1"
+            ;;
+        "-h"|"--help")
+            show_usage
+            ;;
+        *)
+            echo "Unknown parameter $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+    shift
+done
