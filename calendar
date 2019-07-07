@@ -170,6 +170,135 @@ function cmd_add_event() {
                 shift
                 event_description="$1"
                 ;;
+            "-f"|"--freq"|"--frequency")
+                shift
+                case "${1,,}" in
+                    "min"|"minute"|"minutely")
+                        event_freq="MINUTELY"
+                        ;;
+                    "h"|"hour"|"hourly")
+                        event_freq="HOURLY"
+                        ;;
+                    "d"|"day"|"daily")
+                        event_freq="DAILY"
+                        ;;
+                    "w"|"week"|"weekly")
+                        event_freq="WEEKLY"
+                        ;;
+                    "m"|"mon"|"month"|"monthly")
+                        event_freq="MONTHLY"
+                        ;;
+                    "y"|"year"|"yearly")
+                        event_freq="YEARLY"
+                        ;;
+                    *)
+                        echo "Unknown frequency $1"
+                        exit 1
+                        ;;
+                esac
+                ;;
+            "--by-min"|"--by-minute")
+                shift
+                if [[ "$1" == "${1//[^0-9,]/}" ]]; then
+                    echo "Mintues must be a comma-seperated positive integer type"
+                    exit 1
+                fi
+                IFS=',' read -a minutes <<< "$1"
+                for i in "${minutes[@]}" ; do
+                    if (("$i">=60)) ; then
+                        echo "Each minute must be less than 60"
+                        exit 1
+                    fi
+                done
+                event_bymin="$(<<< "${minutes[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-hour")
+                shift
+                if [[ "$1" == "${1//[^0-9,]/}" ]]; then
+                    echo "Hours must be a comma-seperated positive integer type"
+                    exit 1
+                fi
+                IFS=',' read -a hours <<< "$1"
+                for i in "${hours[@]}" ; do
+                    if (("$i">=24)) ; then
+                        echo "Each hour must be less than 24"
+                        exit 1
+                    fi
+                done
+                event_byhour="$(<<< "${hours[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-day")
+                shift
+                IFS=',' read -a days <<< "$1"
+                interpreted_days=($(weekday_interpreter "${days[@]}"))
+                event_byday="$(<<< "${interpreted_days[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-monthday"|"--by-month-day")
+                shift
+                if [[ "$1" == "${1//[^0-9,]/}" ]]; then
+                    echo "Monthday must be a comma-seperated positive integer type"
+                    exit 1
+                fi
+                IFS=',' read -a monthday <<< "$1"
+                for i in "${monthday[@]}" ; do
+                    if (("$i">31)) || (("$i"==0)) ; then
+                        echo "Each monthday must be less between 1 and 31"
+                        exit 1
+                    fi
+                done
+                event_bymonthday="$(<<< "${monthday[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-week"|"--by-weekno")
+                shift
+                if [[ "$1" == "${1//[^0-9,]/}" ]]; then
+                    echo "Week number must be a comma-seperated positive integer type"
+                    exit 1
+                fi
+                IFS=',' read -a weeks <<< "$1"
+                for i in "${weeks[@]}" ; do
+                    if (("$i">=53)) ; then
+                        echo "Each week must be less than 53"
+                        exit 1
+                    fi
+                done
+                event_byweekno="$(<<< "${weeks[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-month")
+                shift
+                IFS=',' read -a months <<< "$1"
+                interpreted_month=($(month_interpreter "${months[@]}"))
+                event_bymonth="$(<<< "${months[@]}" sed 's/\ /,/g')"
+                ;;
+            "--by-setpos"|"--by-set-pos"|"--by-set-position")
+                shift
+                if [[ "$1" == "${1//[^-0-9,]/}" ]]; then
+                    echo "Set position must be a comma-seperated integer type"
+                    exit 1
+                fi
+                IFS=',' read -a pos <<< "$1"
+                event_bysetpos="$(<<< "${pos[@]}" sed 's/\ /,/g')"
+                ;;
+            "--week-start")
+                shift
+                event_wkstart="$(weekday_interpreter "$1")"
+                event_wkstart="${event_wkstart//\n/}"
+                ;;
+            "-i"|"--interval")
+                shift
+                if ! [[ "$1" == "${1//[^0-9]/}" ]]; then
+                    echo "Interval must be an integer type"
+                    exit 1
+                fi
+                event_interval="$1"
+                ;;
+            "-c"|"--count")
+                shift
+                if ! [[ "$1" == "${1//[^0-9]/}" ]]; then
+                    echo "Count must be an integer type"
+                    exit 1
+                fi
+                event_count="$1"
+                ;;
             "-b"|"--begin"|"--start")
                 shift
                 event_start="$(date --date="$1" --rfc-822)"
@@ -220,6 +349,40 @@ function cmd_add_event() {
         if ! [ -z "$event_description" ]; then
             echo "DESCRIPTION:$event_description"
         fi
+        if ! [ -z "$event_freq" ]; then
+            echo -n "RRULE:FREQ=$event_freq"
+            if ! [ -z "$event_bymin" ]; then
+                echo -n ";BYMINUTE=$event_bymin"
+            fi
+            if ! [ -z "$event_byhour" ]; then
+                echo -n ";BYHOUR=$event_byhour"
+            fi
+            if ! [ -z "$event_byday" ]; then
+                echo -n ";BYDAY=$event_byday"
+            fi
+            if ! [ -z "$event_bymonthday" ]; then
+                echo -n ";BYMONTHDAY=$event_bymonthday"
+            fi
+            if ! [ -z "$event_byweekno" ]; then
+                echo -n ";BYWEEKNO=$event_byweekno"
+            fi
+            if ! [ -z "$event_bymonth" ]; then
+                echo -n ";BYMONTH=$event_bymonth"
+            fi
+            if ! [ -z "$event_bysetpos" ]; then
+                echo -n ";BYSETPOS=$event_bysetpos"
+            fi
+            if ! [ -z "$event_wkstart" ]; then
+                echo -n ";WKST=$event_wkstart"
+            fi
+            if ! [ -z "$event_interval" ]; then
+                echo -n ";INTERVAL=$event_interval"
+            fi
+            if ! [ -z "$event_count" ]; then
+                echo -n ";COUNT=$event_count"
+            fi
+            echo ""
+        fi
         echo "DTSTART:$(date --date="$event_start" -u '+%Y%m%dT%H%M%SZ')"
         echo "DTEND:$(date --date="$event_stop" -u '+%Y%m%dT%H%M%SZ')"
         echo "END:VEVENT"
@@ -231,6 +394,94 @@ function cmd_add_event() {
         err="$?"
     fi
     exit "$err"
+}
+
+function weekday_interpreter() {
+    for i in "$@"; do
+        case "${i,,}" in
+            "su"*)
+                echo "SU"
+                ;;
+            "m"*)
+                echo "MO"
+                ;;
+            "tu"*)
+                echo "TU"
+                ;;
+            "w"*)
+                echo "WE"
+                ;;
+            "th"*)
+                echo "TH"
+                ;;
+            "f"*)
+                echo "FR"
+                ;;
+            "sa"*)
+                echo "SA"
+                ;;
+            *)
+                echo "Unknown weekday $i" >&2
+                exit 1
+                ;;
+        esac
+    done
+}
+
+function month_interpreter() {
+    for i in "$@"; do
+        case "${i,,}" in
+            "ja"*)
+                echo "1"
+                ;;
+            "f"*)
+                echo "2"
+                ;;
+            "mar"*)
+                echo "3"
+                ;;
+            "ap"*)
+                echo "4"
+                ;;
+            "may")
+                echo "5"
+                ;;
+            "jun"*)
+                echo "6"
+                ;;
+            "jul"*)
+                echo "7"
+                ;;
+            "au"*)
+                echo "8"
+                ;;
+            "s"*)
+                echo "9"
+                ;;
+            "o"*)
+                echo "10"
+                ;;
+            "n"*)
+                echo "11"
+                ;;
+            "d"*)
+                echo "12"
+                ;;
+            *)
+                if [[ "$i" == "${i//[^0-9]/}" ]]; then
+                    if (("$i"<=12)) && (("$i"!=0)); then
+                        echo "$i"
+                    else
+                        echo "Month integer must be between 1 and 12" >&2
+                        exit 1
+                    fi
+                else
+                    echo "Invalid month $i" >&2
+                    exit 1
+                fi
+                ;;
+        esac
+    done
 }
 
 function append_to_calendar() {
