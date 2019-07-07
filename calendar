@@ -175,6 +175,7 @@ function cmd_generate() {
         fi
         echo "VERSION:2.0"
         echo "PRODID:-//MilesBreslin//ShellCal//EN"
+        generate_timezone
 
         echo "END:VCALENDAR"
     } > "$working_path/$filename"
@@ -416,7 +417,7 @@ function cmd_add_event() {
             fi
             echo ""
         fi
-        echo "DTSTART:$(date --date="$event_start" -u '+%Y%m%dT%H%M%SZ')"
+        echo "DTSTART;TZID=$(date '+%Z'):$(date --date="$event_start" -u '+%Y%m%dT%H%M%SZ')"
         echo "DTEND:$(date --date="$event_stop" -u '+%Y%m%dT%H%M%SZ')"
         echo "END:VEVENT"
     } | append_to_calendar "$working_path/$filename" 
@@ -518,19 +519,70 @@ function month_interpreter() {
 }
 
 function append_to_calendar() {
-    filename="$1"
-    if ! [ -e "$filename" ]; then
+    if ! [ -e "$1" ]; then
         echo "Cannot append to calendar: File does not exist"
         exit 1
     fi
 
     FILE_CONTENTS=$({
-        awk 'BEGIN{f=1} /END:VCALENDAR/ {f=0} f' "$filename"
+        awk 'BEGIN{f=1} /END:VCALENDAR/ {f=0} f' "$1"
         cat
-        awk 'BEGIN{f=0} /END:VCALENDAR/ {f=1} f' "$filename"
+        awk 'BEGIN{f=0} /END:VCALENDAR/ {f=1} f' "$1"
     })
 
-    <<< "$FILE_CONTENTS" cat > "$filename"
+    <<< "$FILE_CONTENTS" cat > "$1"
+}
+
+function prepend_to_calendar() {
+    if ! [ -e "$1" ]; then
+        echo "Cannot prepend to calendar: File does not exist"
+        exit 1
+    fi
+
+    FILE_CONTENTS=$({
+        awk 'BEGIN{f=1} f {print} /PRODID:/ {f=0}' "$1"
+        cat
+        awk 'BEGIN{f=0} f {print} /PRODID:/ {f=1}' "$1"
+    })
+
+    <<< "$FILE_CONTENTS" cat > "$1"
+}
+
+function ensure_zone_exists() {
+    if ! [ -e "$1" ]; then
+        echo "Cannot ensure timezone exists on calendar: File does not exist"
+        exit 1
+    fi
+    # If timezone has not been specified; Not currently functional
+    if < "$1" awk \
+        "   BEGIN{f=1} 
+            /BEGIN:VTIMEZONE/ {TZ=1}
+            /END:VTIMEZONE/ {TZ=0}
+            TZ && /TZID=$(date '+%Z')/ {f=0}
+            END {exit f}"
+    then
+        echo "TIMEZONE DOES NOT EXIST"
+        generate_timezone | prepend_to_calendar "$1"
+    fi
+
+}
+
+function generate_timezone() {
+    echo "BEGIN:VTIMEZONE"
+    echo "TZID:$(date "+%Z")"
+    echo "BEGIN:STANDARD"
+    echo "DTSTART:16011104T020000"
+    echo "RRULE:FREQ=YEARLY;BYDAY=1SU;BYMONTH=11"
+    echo "TZOFFSETFROM:$(date --date="jun 1" '+%z')"
+    echo "TZOFFSETTO:$(date --date="jan 1" '+%z')"
+    echo "END:STANDARD"
+    echo "BEGIN:DAYLIGHT"
+    echo "DTSTART:16010311T020000"
+    echo "RRULE:FREQ=YEARLY;BYDAY=2SU;BYMONTH=3"
+    echo "TZOFFSETFROM:$(date --date="jan 1" '+%z')"
+    echo "TZOFFSETTO:$(date --date="jun 1" '+%z')"
+    echo "END:DAYLIGHT"
+    echo "END:VTIMEZONE"
 }
 
 function git_update() {
